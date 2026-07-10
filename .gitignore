@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+
+# Secrets and personal data
+.env
+.env.*
+!.env.example
+*.wav
+*.flac
+*.mp3
+recordings/
+models/
+transcriptions/
+history/
+config.toml
+*.local.toml
+
+# Editors
+.idea/
+.vscode/

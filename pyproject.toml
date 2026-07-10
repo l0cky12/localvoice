@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "localvoice"
+version = "0.1.0"
+description = "Local voice dictation for Hyprland on Wayland"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Liam DeCareaux" }]
+dependencies = [
+  "PySide6>=6.8,<7",
+  "faster-whisper>=1.1,<2",
+  "webrtcvad-wheels>=2.0.14,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-cov>=6", "ruff>=0.9", "mypy>=1.14"]
+
+[project.scripts]
+localvoice = "localvoice.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/localvoice"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["localvoice"]
+warn_unused_ignores = false

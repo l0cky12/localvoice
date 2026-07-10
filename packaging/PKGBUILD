@@ -1,0 +1,25 @@
+pkgname=localvoice
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Local voice dictation for Hyprland on Wayland"
+arch=('x86_64')
+url="https://github.com/l0cky12/localvoice"
+license=('MIT')
+depends=('python>=3.12' 'pyside6' 'python-faster-whisper' 'python-webrtcvad-wheels'
+         'pipewire-audio' 'wireplumber' 'wl-clipboard' 'hyprland')
+makedepends=('python-build' 'python-installer' 'python-hatchling' 'python-wheel')
+optdepends=('piper-tts: offline text-to-speech')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 data/localvoice.desktop "$pkgdir/usr/share/applications/localvoice.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

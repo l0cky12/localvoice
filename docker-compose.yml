@@ -1,0 +1,26 @@
+services:
+  localvoice:
+    build: .
+    user: "${LOCALVOICE_UID:-1000}:${LOCALVOICE_GID:-1000}"
+    environment:
+      XDG_SESSION_TYPE: wayland
+      HYPRLAND_INSTANCE_SIGNATURE: "${HYPRLAND_INSTANCE_SIGNATURE}"
+      WAYLAND_DISPLAY: "${WAYLAND_DISPLAY:-wayland-1}"
+      XDG_RUNTIME_DIR: "/run/user/${LOCALVOICE_UID:-1000}"
+      PIPEWIRE_REMOTE: pipewire-0
+    volumes:
+      - "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/run/user/${LOCALVOICE_UID:-1000}/${WAYLAND_DISPLAY}"
+      - "${XDG_RUNTIME_DIR}/pipewire-0:/run/user/${LOCALVOICE_UID:-1000}/pipewire-0"
+      - "${XDG_RUNTIME_DIR}/hypr:/run/user/${LOCALVOICE_UID:-1000}/hypr"
+      - localvoice-cache:/home/localvoice/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+      - /home/localvoice/.config:uid=1000,gid=1000,mode=0700
+
+volumes:
+  localvoice-cache:
