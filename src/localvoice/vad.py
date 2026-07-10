@@ -7,6 +7,7 @@ import threading
 import wave
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 
 class ContinuousListener:
@@ -53,7 +54,7 @@ class ContinuousListener:
         speech: list[bytes] = []
         silence = 0
         while not self._stop.is_set():
-            frame = self._process.stdout.read(frame_bytes)
+            frame = self._read_frame(self._process.stdout, frame_bytes)
             if len(frame) != frame_bytes:
                 break
             voiced = vad.is_speech(frame, 16000)
@@ -73,6 +74,18 @@ class ContinuousListener:
                 pre_roll.append(frame)
         if len(speech) >= 15:
             self._emit(speech)
+
+    def _read_frame(self, stream: Any, size: int) -> bytes:
+        # Pipe reads may return fewer bytes than requested without signalling
+        # EOF; accumulate until a full VAD frame is available so speech is not
+        # truncated mid-stream. A genuine short read (EOF/stop) ends the loop.
+        buffer = bytearray()
+        while len(buffer) < size and not self._stop.is_set():
+            chunk = stream.read(size - len(buffer))
+            if not chunk:
+                break
+            buffer.extend(chunk)
+        return bytes(buffer)
 
     def _emit(self, frames: list[bytes]) -> None:
         directory = Path(tempfile.mkdtemp(prefix="localvoice-"))

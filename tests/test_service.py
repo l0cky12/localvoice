@@ -30,8 +30,40 @@ def test_success_keeps_gui_and_clipboard_fallback(monkeypatch, tmp_path: Path) -
     audio.write_bytes(b"audio")
     monkeypatch.setattr(service.transcriber, "transcribe", lambda _path: "private text")
     monkeypatch.setattr("localvoice.service.copy_text", copied.append)
+    monkeypatch.setattr("localvoice.service.save_clipboard", lambda: None)
     monkeypatch.setattr(service.hyprland, "restore_and_paste", lambda *_args: False)
     service._finish(audio, WindowTarget("0x1", "kitty"))
     assert copied == ["private text"]
     assert texts == ["private text"]
     assert statuses[-1] == "Copied; automatic paste unavailable"
+
+
+def test_successful_paste_restores_previous_clipboard(monkeypatch, tmp_path: Path) -> None:
+    statuses: list[str] = []
+    restored: list[bytes] = []
+    service = DictationService(Settings(), on_status=statuses.append)
+    audio = tmp_path / "voice.wav"
+    audio.write_bytes(b"audio")
+    monkeypatch.setattr(service.transcriber, "transcribe", lambda _path: "dictated text")
+    monkeypatch.setattr("localvoice.service.copy_text", lambda _text: None)
+    monkeypatch.setattr("localvoice.service.save_clipboard", lambda: b"earlier user clipboard")
+    monkeypatch.setattr("localvoice.service.restore_clipboard", restored.append)
+    monkeypatch.setattr("localvoice.service.sleep", lambda _seconds: None)
+    monkeypatch.setattr(service.hyprland, "restore_and_paste", lambda *_args: True)
+    service._finish(audio, WindowTarget("0x1", "kitty"))
+    assert restored == [b"earlier user clipboard"]
+    assert statuses[-1] == "Pasted"
+
+
+def test_failed_paste_leaves_transcription_on_clipboard(monkeypatch, tmp_path: Path) -> None:
+    restored: list[bytes] = []
+    service = DictationService(Settings())
+    audio = tmp_path / "voice.wav"
+    audio.write_bytes(b"audio")
+    monkeypatch.setattr(service.transcriber, "transcribe", lambda _path: "dictated text")
+    monkeypatch.setattr("localvoice.service.copy_text", lambda _text: None)
+    monkeypatch.setattr("localvoice.service.save_clipboard", lambda: b"earlier user clipboard")
+    monkeypatch.setattr("localvoice.service.restore_clipboard", restored.append)
+    monkeypatch.setattr(service.hyprland, "restore_and_paste", lambda *_args: False)
+    service._finish(audio, WindowTarget("0x1", "kitty"))
+    assert restored == []  # transcription stays on the clipboard as the fallback

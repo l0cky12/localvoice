@@ -33,7 +33,15 @@ class LocalTranscriber:
         if not audio_path.is_file():
             raise FileNotFoundError(audio_path)
         segments, _ = self._load().transcribe(
-            str(audio_path), language=self.language, vad_filter=True, beam_size=5
+            str(audio_path),
+            language=self.language,
+            vad_filter=True,
+            beam_size=5,
+            # Reduce silence hallucinations and the classic looping repetition:
+            # do not feed prior text back in, and drop low-confidence/silent
+            # segments before they reach the caller.
+            condition_on_previous_text=False,
+            no_speech_threshold=0.6,
         )
         return " ".join(
             segment.text.strip() for segment in segments if segment.text.strip()

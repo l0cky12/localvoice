@@ -5,13 +5,18 @@ import tempfile
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from time import sleep
 
-from .clipboard import copy_text
+from .clipboard import copy_text, restore_clipboard, save_clipboard
 from .config import Settings
 from .hyprland import HyprlandController, WindowTarget
 from .pipewire import PipeWireRecorder
 from .transcriber import LocalTranscriber
 from .vad import ContinuousListener
+
+# Wayland provides no signal that a paste has completed, so the previous
+# clipboard is restored only after a short settle delay. Best-effort by design.
+_PASTE_SETTLE_SECONDS = 0.3
 
 
 class DictationService:
@@ -80,6 +85,10 @@ class DictationService:
             if not text:
                 self.on_status("No speech detected")
                 return
+            # Snapshot the user's clipboard *before* we overwrite it, so it can be
+            # restored if we successfully paste. If the paste fails the transcription
+            # is deliberately left on the clipboard as the documented fallback.
+            previous = save_clipboard()
             copy_text(text)
             self.on_text(text)
             pasted = False
@@ -90,17 +99,19 @@ class DictationService:
                     )
                 except Exception:
                     pasted = False
+            if pasted and previous is not None:
+                sleep(_PASTE_SETTLE_SECONDS)
+                restore_clipboard(previous)
             self.on_status("Pasted" if pasted else "Copied; automatic paste unavailable")
         except Exception as exc:
             self.on_status(f"Error: {exc}")
         finally:
-            try:
-                parent = audio.parent
-                audio.unlink(missing_ok=True)
-                if parent.name.startswith("localvoice-"):
-                    shutil.rmtree(parent, ignore_errors=True)
-            finally:
-                self._directory = None
+            # Clean up only this utterance's private directory. Do not touch
+            # self._directory: a new session may already own it (see _cleanup).
+            parent = audio.parent
+            audio.unlink(missing_ok=True)
+            if parent.name.startswith("localvoice-"):
+                shutil.rmtree(parent, ignore_errors=True)
 
     def _cleanup(self) -> None:
         if self._directory:
